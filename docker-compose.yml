@@ -1,0 +1,64 @@
+version: "3.7"
+services:
+  nginx:
+    image: nginx:alpine3.18
+    environment:
+      - NGINX_HOST=teste.com
+      - NGINX_PROXY_FCGI_SERVICE=php:9000
+      - NGINX_WWW_ROOT=/var/www/html/
+    volumes:
+      - ./ops/nginx/default.conf:/etc/nginx/templates/default.conf.template
+      - ./public:/var/www/html/
+    ports: 
+      - "8080:80"
+    command: [nginx-debug, '-g', 'daemon off;']
+    networks:
+      - internal
+  php:
+    image: nginx-php56_php_1
+    # build:
+    #   context: .
+    #   dockerfile: ./ops/php/Dockerfile
+    environment:
+      # php.ini Configurations
+      - TZ=America/Araguaina
+      - PHP_INI_DIR=/usr/local/etc/php
+      # PHP-FPM Configurations
+      - PHPFPM_MAX_CHILDREN=5
+      - PHPFPM_START_SERVERS=2
+      - PHPFPM_MIN_SPARE_SERVERS=1
+      - PHPFPM_MAX_SPARE_SERVERS=3
+      - PHPFPM_WWW_ROOT=/var/www/html
+      - PHPFPM_LISTEN_ADDR=127.0.0.1:9000
+      - PHPFPM_STATUS_PATH=/php-fpm-status
+      # PHP Xdebug Configurations
+      - PHP_XDEBUG_PROFILER_ENABLED=On
+      - PHP_XDEBUG_PROFILER_ENABLE_TRIGGER=Off
+      - PHP_XDEBUG_PROFILER_ENABLE_TRIGGER_VALUE=
+      - PHP_XDEBUG_PROFILER_OUTPUT_DIR=/tmp/profiling
+      - PHP_XDEBUG_PROFILER_OUTPUT_NAME=cachegrind.out.%R(%S)
+      - PHP_XDEBUG_REMOTE_ADDR_HEADER=
+      - PHP_XDEBUG_REMOTE_AUTOSTART=Off
+      - PHP_XDEBUG_REMOTE_CONNECT_BACK=Off
+      - PHP_XDEBUG_REMOTE_COOKIE_EXPIRE_TIMEOUT=3600
+      - PHP_XDEBUG_REMOTE_ENABLE=Off
+      - PHP_XDEBUG_REMOTE_HANDLER=dbgp
+      - PHP_XDEBUG_REMOTE_HOST=127.0.0.1
+      - PHP_XDEBUG_REMOTE_LOG=
+      - PHP_XDEBUG_REMOTE_MODE=req
+      - PHP_XDEBUG_REMOTE_PORT=9003
+    volumes:
+      - ./storage/profiling:/tmp/profiling
+      - ./ops/php/ext/xdebug/xdebug.conf:/usr/local/etc/php/conf.d/99-xdebug.ini
+      - ./ops/php/php.ini-development:/usr/local/etc/php/php.ini
+      - ./ops/php/fpm/www.conf:/usr/local/etc/php-fpm.d/www.conf
+      - ./public:/var/www/html/
+    networks:
+      - internal
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  www-shared:
+    external: true
